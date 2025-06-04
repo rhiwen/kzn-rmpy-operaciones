@@ -2,6 +2,7 @@
 import logging
 from datetime import datetime
 from typing import Optional
+from app.utils.fecha import generar_fecha_reporte
 
 from fastapi import BackgroundTasks
 from redminelib.exceptions import ForbiddenError, AuthError
@@ -37,7 +38,7 @@ def generate_report(
 
     # Convertir datos en HTML visual (modularizado en file_manager)
     html_content = data_to_html(data)
-    timestamp = datetime.now().strftime("%Y/%m/%d %H-%M-%S")
+    timestamp = generar_fecha_reporte()
 
     # Enviar correo
     if send_email:
