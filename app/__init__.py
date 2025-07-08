@@ -1,8 +1,11 @@
-# app/__init__.py
 from pathlib import Path
 from dotenv import load_dotenv
+import sys
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")   # carga siempre el .env de la raíz
+# Detección si está corriendo como EXE o en desarrollo
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys.executable).parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
 
-# El resto de __init__ (puede quedar vacío)
+load_dotenv(BASE_DIR / ".env")

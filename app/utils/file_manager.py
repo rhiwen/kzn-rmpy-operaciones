@@ -17,7 +17,7 @@ def data_to_html(rows: List[Dict[str, Any]]) -> str:
 
     columnas_ordenadas = [
         "Proyecto Padre", "Proyecto", "Fecha de inicio", "Fecha finalización",
-        "Tareas abiertas","Tareas totales", "Progreso tareas", "Tareas modificadas última semana",
+        "Tareas abiertas", "Tareas totales", "Progreso tareas", "Tareas modificadas última semana",
         "Tareas cerradas última semana", "Tareas modificadas últimos 30 días",
         "Tareas cerradas últimos 30 días", "Horas estimadas", "Horas insumidas", "Horas consumidas"
     ]
@@ -60,7 +60,7 @@ def data_to_html(rows: List[Dict[str, Any]]) -> str:
         for col in columnas_ordenadas:
             html += (
                 f"<th style='border: 1px solid #ccc; padding: 4px; "
-                f"background-color: #f2f2f2; text-align: left; vertical-align: middle; "
+                f"background-color: #f2f2f2; text-align: center; vertical-align: middle; "
                 f"width: {anchos[col]};'>{col}</th>"
             )
         html += "</tr></thead><tbody>"
@@ -69,8 +69,16 @@ def data_to_html(rows: List[Dict[str, Any]]) -> str:
             html += "<tr>"
             for col in columnas_ordenadas:
                 cell = row[col]
-                valor = cell if cell is not None else ""
 
+                # Formateo
+                if col in ["Horas estimadas", "Horas insumidas"] and isinstance(cell, (int, float)):
+                    valor = f"{cell:.2f}"
+                elif col in ["Progreso tareas", "Horas consumidas"] and isinstance(cell, str) and "%" in cell:
+                    valor = cell.split(".")[0] + "%"
+                else:
+                    valor = cell if cell is not None else ""
+
+                # Proyecto con separación por salto de línea si contiene separador
                 if col in ["Proyecto", "Proyecto Padre"] and isinstance(valor, str):
                     match = re.search(r"\s*[-–—]\s*", valor)
                     if match:
@@ -84,7 +92,7 @@ def data_to_html(rows: List[Dict[str, Any]]) -> str:
 
                 html += (
                     f"<td style='border: 1px solid #ccc; padding: 2px 4px; "
-                    f"text-align: left; vertical-align: middle; white-space: normal; overflow-wrap: break-word;'>"
+                    f"text-align: center; vertical-align: middle; white-space: normal; overflow-wrap: break-word;'>"
                     f"{valor}</td>"
                 )
             html += "</tr>"

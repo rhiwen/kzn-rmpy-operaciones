@@ -109,7 +109,7 @@ def process_projects(projects):
     last_sunday = last_saturday - timedelta(days=6)
 
     data = []
-    keywords = ("DATA", "CONSULTORIA", "DESARROLLO")
+    keywords = ("DATA", "CONSULTORIA", "DESARROLLO", "TECNOLOGIA")
 
     for prj in projects:
         if not rel_map.get(prj.id):
@@ -197,7 +197,7 @@ def process_projects(projects):
             if est:
                 rec["Horas estimadas"] += round(est, 2)
 
-        # ✅ Lógica corregida de horas insumidas
+        # Lógica corregida de horas insumidas
         rec["Horas insumidas"] = sum(
             round(float(e.hours or 0), 2)
             for i in issues
