@@ -116,10 +116,7 @@ def process_projects(projects):
             continue
 
         chain = parent_chain_names(prj)
-        proyecto_padre = chain[0] if chain else ""
         equipo = chain[-1] if len(chain) > 1 else ""
-        if proyecto_padre == equipo:
-            proyecto_padre = ""
 
         if not any(kw in equipo.upper() for kw in keywords):
             continue
@@ -127,25 +124,9 @@ def process_projects(projects):
         es_padre = has_children(prj.id)
         proyecto_name = "" if es_padre else prj.name
 
-        rec = {
-            "Equipo": equipo,
-            "Proyecto Padre": proyecto_padre,
-            "Proyecto": proyecto_name,
-            "Fecha de inicio": None,
-            "Fecha finalización": None,
-            "Tareas totales": 0,
-            "Tareas abiertas": 0,
-            "Tareas modificadas última semana": 0,
-            "Tareas cerradas última semana": 0,
-            "Tareas modificadas últimos 30 días": 0,
-            "Tareas cerradas últimos 30 días": 0,
-            "Horas estimadas": 0.0,
-            "Horas insumidas": 0.0,
-        }
-
         issues = safe_issues(prj.id)
 
-        # IMPORTANTE: ahora la carga del cache
+        # Cache de time entries
         from app.utils.cache_manager import get_cached_time_entries
         try:
             entries_all = get_cached_time_entries(redmine, prj.id, months=12)
@@ -158,9 +139,37 @@ def process_projects(projects):
             if hasattr(e, "issue") and e.issue:
                 te_by_issue.setdefault(e.issue.id, []).append(e)
 
+        # Agrupar issues por versión
+        versions_data = {}
+        
         for i in issues:
+            # Obtener la versión
+            version_name = "Sin versión"
+            if hasattr(i, "fixed_version") and i.fixed_version:
+                version_name = getattr(i.fixed_version, "name", "Sin versión")
+            
+            # Inicializar la versión si no existe
+            if version_name not in versions_data:
+                versions_data[version_name] = {
+                    "Equipo": equipo,
+                    "Proyecto": proyecto_name,
+                    "Version": version_name,
+                    "Fecha de inicio": None,
+                    "Fecha finalización": None,
+                    "Tareas totales": 0,
+                    "Tareas abiertas": 0,
+                    "Tareas modificadas última semana": 0,
+                    "Tareas cerradas última semana": 0,
+                    "Tareas modificadas últimos 30 días": 0,
+                    "Tareas cerradas últimos 30 días": 0,
+                    "Horas estimadas": 0.0,
+                    "Horas insumidas": 0.0,
+                }
+
+            rec = versions_data[version_name]
             rec["Tareas totales"] += 1
 
+            # Fechas
             s = getattr(i, "start_date", None)
             if s:
                 s_date = s.date() if hasattr(s, "date") else s
@@ -173,6 +182,7 @@ def process_projects(projects):
                 if rec["Fecha finalización"] is None or d_date > rec["Fecha finalización"]:
                     rec["Fecha finalización"] = d_date
 
+            # Estado de tareas
             st = getattr(i.status, "id", None)
             if st in (6, 5, 21, 9):
                 c = getattr(i, "closed_on", None)
@@ -185,6 +195,7 @@ def process_projects(projects):
             else:
                 rec["Tareas abiertas"] += 1
 
+            # Actualizaciones
             u = getattr(i, "updated_on", None)
             if u:
                 u_date = u.date()
@@ -193,23 +204,23 @@ def process_projects(projects):
                 if start_30 <= u_date <= end_today:
                     rec["Tareas modificadas últimos 30 días"] += 1
 
+            # Horas estimadas
             est = getattr(i, "estimated_hours", None)
             if est:
                 rec["Horas estimadas"] += round(est, 2)
 
-        # Lógica corregida de horas insumidas
-        rec["Horas insumidas"] = sum(
-            round(float(e.hours or 0), 2)
-            for i in issues
-            for e in te_by_issue.get(i.id, [])
-        )
+            # Horas insumidas
+            for e in te_by_issue.get(i.id, []):
+                rec["Horas insumidas"] += round(float(e.hours or 0), 2)
 
-        rec["Horas estimadas"] = round(rec["Horas estimadas"], 2)
-        rec["Horas insumidas"] = round(rec["Horas insumidas"], 2)
+        # Calcular métricas finales para cada versión
+        for version_name, rec in versions_data.items():
+            rec["Horas estimadas"] = round(rec["Horas estimadas"], 2)
+            rec["Horas insumidas"] = round(rec["Horas insumidas"], 2)
 
-        rec["Progreso tareas"] = f"{((rec['Tareas totales'] - rec['Tareas abiertas']) / rec['Tareas totales'] * 100):.2f}%" if rec["Tareas totales"] > 0 else "0.00%"
-        rec["Horas consumidas"] = f"{rec['Horas insumidas'] / rec['Horas estimadas'] * 100:.2f}%" if rec["Horas estimadas"] > 0 else "0.00%"
+            rec["Progreso tareas"] = f"{((rec['Tareas totales'] - rec['Tareas abiertas']) / rec['Tareas totales'] * 100):.2f}%" if rec["Tareas totales"] > 0 else "0.00%"
+            rec["Horas consumidas"] = f"{rec['Horas insumidas'] / rec['Horas estimadas'] * 100:.2f}%" if rec["Horas estimadas"] > 0 else "0.00%"
 
-        data.append(rec)
+            data.append(rec)
 
     return data

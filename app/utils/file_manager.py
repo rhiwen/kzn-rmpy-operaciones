@@ -5,7 +5,7 @@ from app.utils.fecha import generar_fecha_reporte
 
 def data_to_html(rows: List[Dict[str, Any]]) -> str:
     """
-    Genera el HTML del reporte de proyectos con la fecha de generación.
+    Genera el HTML del reporte de proyectos con corte por VERSION.
     """
     if not rows:
         return "<p>No se encontraron proyectos relevantes.</p>"
@@ -16,7 +16,7 @@ def data_to_html(rows: List[Dict[str, Any]]) -> str:
         return "<p>Error: Falta la columna 'Equipo'.</p>"
 
     columnas_ordenadas = [
-        "Proyecto Padre", "Proyecto", "Fecha de inicio", "Fecha finalización",
+        "Proyecto", "Version", "Fecha de inicio", "Fecha finalización",
         "Tareas abiertas", "Tareas totales", "Progreso tareas", "Tareas modificadas última semana",
         "Tareas cerradas última semana", "Tareas modificadas últimos 30 días",
         "Tareas cerradas últimos 30 días", "Horas estimadas", "Horas insumidas", "Horas consumidas"
@@ -41,8 +41,8 @@ def data_to_html(rows: List[Dict[str, Any]]) -> str:
         """
 
         anchos = {
-            "Proyecto Padre": "180px",
-            "Proyecto": "180px",
+            "Proyecto": "150px",
+            "Version": "180px",
             "Fecha de inicio": "90px",
             "Fecha finalización": "90px",
             "Tareas totales": "70px",
@@ -78,8 +78,8 @@ def data_to_html(rows: List[Dict[str, Any]]) -> str:
                 else:
                     valor = cell if cell is not None else ""
 
-                # Proyecto con separación por salto de línea si contiene separador
-                if col in ["Proyecto", "Proyecto Padre"] and isinstance(valor, str):
+                # Proyecto y Version con separación por salto de línea si contiene separador
+                if col in ["Proyecto", "Version"] and isinstance(valor, str):
                     match = re.search(r"\s*[-–—]\s*", valor)
                     if match:
                         idx = match.start()
