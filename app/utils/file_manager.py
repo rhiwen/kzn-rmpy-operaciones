@@ -65,7 +65,35 @@ def data_to_html(rows: List[Dict[str, Any]]) -> str:
             )
         html += "</tr></thead><tbody>"
 
-        for _, row in grupo.iterrows():
+        # Línea gruesa después del header
+        html += "<tr><td colspan='14' style='border: none; border-bottom: 3px solid #333; padding: 0; height: 1px;'></td></tr>"
+
+        # Ordenar por proyecto y luego por versión (Sin versión primero, luego por fecha de inicio)
+        grupo['orden_version'] = grupo.apply(lambda row: (
+            0 if row["Version"] == "Sin versión" else 
+            1 if row["Fecha de inicio"] is not None else 2
+        ), axis=1)
+        
+        grupo['fecha_sort'] = grupo.apply(lambda row: (
+            "" if row["Version"] == "Sin versión" else
+            row["Fecha de inicio"] if row["Fecha de inicio"] is not None else
+            "9999-12-31"
+        ), axis=1)
+        
+        grupo_sorted = grupo.sort_values(['Proyecto', 'orden_version', 'fecha_sort'])
+        grupo_sorted = grupo_sorted.drop(['orden_version', 'fecha_sort'], axis=1)
+        
+        # Agrupar por proyecto y ordenar versiones
+        proyecto_actual = None
+        for _, row in grupo_sorted.iterrows():
+            proyecto_nombre = row["Proyecto"]
+            
+            # Si cambió el proyecto, agregar línea gruesa
+            if proyecto_actual is not None and proyecto_actual != proyecto_nombre:
+                html += "<tr><td colspan='14' style='border: none; border-bottom: 3px solid #333; padding: 0; height: 1px;'></td></tr>"
+            
+            proyecto_actual = proyecto_nombre
+            
             html += "<tr>"
             for col in columnas_ordenadas:
                 cell = row[col]
@@ -96,6 +124,9 @@ def data_to_html(rows: List[Dict[str, Any]]) -> str:
                     f"{valor}</td>"
                 )
             html += "</tr>"
+
+        # Línea gruesa al final
+        html += "<tr><td colspan='14' style='border: none; border-bottom: 3px solid #333; padding: 0; height: 1px;'></td></tr>"
 
         html += "</tbody></table>"
 
