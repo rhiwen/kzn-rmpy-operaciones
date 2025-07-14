@@ -26,7 +26,7 @@ def data_to_html(rows: List[Dict[str, Any]]) -> str:
 
     html = f"""
     <div style='font-family: Arial, sans-serif; font-size: 13px;'>
-    <h2 style='margin-bottom: 8px;'>Reporte de Avance Proyectos y Tareas al {fecha_reporte}</h2>
+    <h2 style='margin-bottom: 8px;'>KZN - Reporte de Avance: Proyectos y Versiones al {fecha_reporte}</h2>
     """
 
     for equipo, grupo in df.groupby("Equipo"):
