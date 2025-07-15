@@ -1,5 +1,6 @@
 from pathlib import Path
 from dotenv import load_dotenv
+from os import getenv
 import logging
 import sys
 import smtplib
@@ -8,12 +9,23 @@ from redminelib.exceptions import ForbiddenError, AuthError, ServerError
 # Definimos BASE_DIR compatible con PyInstaller:
 # Si corre como EXE toma el directorio del ejecutable, sino el del script.
 if getattr(sys, 'frozen', False):
-    BASE_DIR = Path(sys.executable).parent
+    # sys.executable → ruta al ejecutable dentro del bundle (temporal)
+    # exe "onefile": sys.argv[0] es la ruta al EXE real
+    BASE_DIR = Path(sys.argv[0]).resolve().parent
 else:
     BASE_DIR = Path(__file__).resolve().parent
 
+# debug: por que no lee env?
+print("BASE_DIR =", BASE_DIR)
+print(".env exists?", (BASE_DIR / ".env").is_file())
+
 # Cargamos las variables de entorno desde el .env en BASE_DIR
-load_dotenv(BASE_DIR / ".env")
+env_file = BASE_DIR / ".env"
+load_dotenv(env_file)
+
+# debug para ver si lee el env
+print("REDMINE_URL:", getenv("REDMINE_URL"))
+print("API_KEY:", getenv("API_KEY"))
 
 # Ruta al log de errores (solo se generará si ocurre un error)
 log_path = BASE_DIR / "error.log"
