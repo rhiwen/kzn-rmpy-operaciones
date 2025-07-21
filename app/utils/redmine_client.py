@@ -45,7 +45,7 @@ def get_projects():
 
 def safe_issues(project_id):
     try:
-        return redmine.issue.filter(project_id=project_id, status_id="*")
+        return redmine.issue.filter(project_id=project_id, status_id="*", include="fixed_version")
     except (ForbiddenError, ResourceNotFoundError, ResourceAttrError):
         return []
 
@@ -145,8 +145,15 @@ def process_projects(projects):
         for i in issues:
             # Obtener la versión
             version_name = "Sin versión"
+            version_due = None
+
             if hasattr(i, "fixed_version") and i.fixed_version:
-                version_name = getattr(i.fixed_version, "name", "Sin versión")
+                ver = i.fixed_version
+                version_name = getattr(ver, "name", version_name)
+                # aquí capturamos la due_date de la versión
+                raw_due = getattr(ver, "due_date", None)
+                if raw_due:
+                    version_due = raw_due.date() if hasattr(raw_due, "date") else raw_due
             
             # Inicializar la versión si no existe
             if version_name not in versions_data:
@@ -154,6 +161,8 @@ def process_projects(projects):
                     "Equipo": equipo,
                     "Proyecto": proyecto_name,
                     "Version": version_name,
+                    # acá queda la due date que despues se concatena en la Version
+                    "Version_due": version_due,
                     "Fecha de inicio": None,
                     "Fecha finalización": None,
                     "Tareas totales": 0,
@@ -213,14 +222,39 @@ def process_projects(projects):
             for e in te_by_issue.get(i.id, []):
                 rec["Horas insumidas"] += round(float(e.hours or 0), 2)
 
-        # Calcular métricas finales para cada versión
+        # Calcular metricas finales para cada versión
         for version_name, rec in versions_data.items():
+            # Redondeos de horas
             rec["Horas estimadas"] = round(rec["Horas estimadas"], 2)
             rec["Horas insumidas"] = round(rec["Horas insumidas"], 2)
 
-            rec["Progreso tareas"] = f"{((rec['Tareas totales'] - rec['Tareas abiertas']) / rec['Tareas totales'] * 100):.2f}%" if rec["Tareas totales"] > 0 else "0.00%"
-            rec["Horas consumidas"] = f"{rec['Horas insumidas'] / rec['Horas estimadas'] * 100:.2f}%" if rec["Horas estimadas"] > 0 else "0.00%"
+            # Porcentaje de progreso tareas
+            if rec["Tareas totales"] > 0:
+                porcentaje = (rec["Tareas totales"] - rec["Tareas abiertas"]) / rec["Tareas totales"] * 100
+                rec["Progreso tareas"] = f"{porcentaje:.2f}%"
+            else:
+                rec["Progreso tareas"] = "0.00%"
 
+            # Porcentaje de horas consumidas
+            if rec["Horas estimadas"] > 0:
+                horaspct = rec["Horas insumidas"] / rec["Horas estimadas"] * 100
+                rec["Horas consumidas"] = f"{horaspct:.2f}%"
+            else:
+                rec["Horas consumidas"] = "0.00%"
+
+            # Aca se formatea la columna Version con la fecha de due_date de la versión
+            # Extraer y eliminar el campo Version_due
+            due = rec.pop("Version_due", None)
+            if due:
+                # due es un date o str; si era date, se convierte
+                fecha_str = due.strftime("%Y-%m-%d") if hasattr(due, "strftime") else str(due)
+            else:
+                fecha_str = "~"
+
+            # Remplazar el valor de "Version" por "Nombre (yyyy-mm-dd)" o "(–)"
+            rec["Version"] = f"{version_name} ({fecha_str})"
+
+            # agregar al listado de salida
             data.append(rec)
 
     return data
